@@ -7,14 +7,21 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/chonkie-inc/memchunk"
 keywords = ["chunking", "text", "simd", "nlp", "tokenization"]
 categories = ["text-processing", "algorithms"]
-exclude = ["bench/data/*"]
+exclude = ["benches/data/*"]
 
 [dependencies]
 memchr = "2"
 
 [dev-dependencies]
 criterion = "0.5"
+text-splitter = "0.18"
+kiru = "0.1"
+semchunk-rs = "0.1"
 
 [[bench]]
 name = "chunk"
+harness = false
+
+[[bench]]
+name = "comparison"
 harness = false

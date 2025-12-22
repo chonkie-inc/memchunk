@@ -2,8 +2,8 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughpu
 use memchunk::chunk;
 
 fn bench_enwik8(c: &mut Criterion) {
-    let text = std::fs::read("bench/data/enwik8").expect(
-        "Failed to load enwik8. Run: cd bench/data && curl -O https://mattmahoney.net/dc/enwik8.zip && unzip enwik8.zip",
+    let text = std::fs::read("benches/data/enwik8").expect(
+        "Failed to load enwik8. Run: cd benches/data && curl -O https://mattmahoney.net/dc/enwik8.zip && unzip enwik8.zip",
     );
 
     let mut group = c.benchmark_group("enwik8");
@@ -34,8 +34,8 @@ fn bench_enwik8(c: &mut Criterion) {
 }
 
 fn bench_enwik9(c: &mut Criterion) {
-    let text = std::fs::read("bench/data/enwik9").expect(
-        "Failed to load enwik9. Run: cd bench/data && curl -O https://mattmahoney.net/dc/enwik9.zip && unzip enwik9.zip",
+    let text = std::fs::read("benches/data/enwik9").expect(
+        "Failed to load enwik9. Run: cd benches/data && curl -O https://mattmahoney.net/dc/enwik9.zip && unzip enwik9.zip",
     );
 
     let mut group = c.benchmark_group("enwik9");

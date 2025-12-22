@@ -26,4 +26,4 @@ target
 /target
 
 # Benchmark data
-bench/data/
+benches/data/
