@@ -1,0 +1,20 @@
+[package]
+name = "memchunk"
+version = "0.1.0"
+edition = "2024"
+description = "The fastest semantic text chunking library — up to 1TB/s chunking throughput"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/chonkie-inc/memchunk"
+keywords = ["chunking", "text", "simd", "nlp", "tokenization"]
+categories = ["text-processing", "algorithms"]
+exclude = ["bench/data/*"]
+
+[dependencies]
+memchr = "2"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "chunk"
+harness = false
