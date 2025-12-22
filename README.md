@@ -2,7 +2,7 @@
   <img src="assets/memchunk_wide.png" alt="memchunk" width="500">
 </p>
 
-<h1 align="center">⚡ memchunk ⚡</h1>
+<h1 align="center">memchunk</h1>
 
 <p align="center">
   <em>The fastest text chunking library — up to 1TB/s throughput</em>
