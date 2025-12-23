@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <a href="https://crates.io/crates/memchunk"><img src="https://img.shields.io/crates/v/memchunk.svg" alt="crates.io"></a>
-  <a href="https://pypi.org/project/memchunk"><img src="https://img.shields.io/pypi/v/memchunk.svg" alt="PyPI"></a>
-  <a href="https://www.npmjs.com/package/memchunk"><img src="https://img.shields.io/npm/v/memchunk.svg" alt="npm"></a>
-  <a href="https://github.com/chonkie-inc/memchunk"><img src="https://img.shields.io/badge/github-memchunk-blue" alt="GitHub"></a>
-  <a href="LICENSE-MIT"><img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg" alt="License"></a>
+  <a href="https://crates.io/crates/memchunk"><img src="https://img.shields.io/crates/v/memchunk.svg?color=e74c3c" alt="crates.io"></a>
+  <a href="https://pypi.org/project/memchunk"><img src="https://img.shields.io/pypi/v/memchunk.svg?color=e67e22" alt="PyPI"></a>
+  <a href="https://www.npmjs.com/package/memchunk"><img src="https://img.shields.io/npm/v/memchunk.svg?color=2ecc71" alt="npm"></a>
+  <a href="https://github.com/chonkie-inc/memchunk"><img src="https://img.shields.io/badge/github-memchunk-3498db" alt="GitHub"></a>
+  <a href="LICENSE-MIT"><img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-9b59b6.svg" alt="License"></a>
 </p>
 
 ---
