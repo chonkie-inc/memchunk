@@ -31,4 +31,5 @@ benches/data/
 # Python
 *.pyc
 *.so
+*.tar.gz
 __pycache__/
