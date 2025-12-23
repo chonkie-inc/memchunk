@@ -31,19 +31,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: '3.12'
+          enable-cache: true
 
-      - name: Build and install
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Create virtualenv and install dependencies
+        run: |
+          uv venv
+          uv pip install pytest
+
+      - name: Build wheel
         uses: PyO3/maturin-action@v1
         with:
-          command: develop
-          args: -m packages/python/Cargo.toml
+          command: build
+          args: --release -m packages/python/Cargo.toml -o dist
+
+      - name: Install wheel
+        run: uv pip install dist/*.whl
 
       - name: Run tests
         run: |
+          source .venv/bin/activate
           cd packages/python
           python -m pytest tests/ -v
 
