@@ -30,6 +30,8 @@ want to know how? [read the blog post](https://minha.sh/posts/so-you-want-to-chu
 npm install memchunk
 ```
 
+looking for [rust](https://github.com/chonkie-inc/memchunk) or [python](https://github.com/chonkie-inc/memchunk/tree/main/packages/python)?
+
 ## 🚀 usage
 
 ```javascript

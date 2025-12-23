@@ -38,6 +38,8 @@ want to know how? [read the blog post](https://minha.sh/posts/so-you-want-to-chu
 cargo add memchunk
 ```
 
+looking for [python](https://github.com/chonkie-inc/memchunk/tree/main/packages/python) or [javascript](https://github.com/chonkie-inc/memchunk/tree/main/packages/wasm)?
+
 ## 🚀 Usage
 
 ```rust

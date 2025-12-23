@@ -30,6 +30,8 @@ want to know how? [read the blog post](https://minha.sh/posts/so-you-want-to-chu
 pip install memchunk
 ```
 
+looking for [rust](https://github.com/chonkie-inc/memchunk) or [javascript](https://github.com/chonkie-inc/memchunk/tree/main/packages/wasm)?
+
 ## 🚀 usage
 
 ```python
