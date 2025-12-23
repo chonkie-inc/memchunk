@@ -1,13 +1,13 @@
 """memchunk - The fastest semantic text chunking library."""
 
 from memchunk._memchunk import (
-    Chunker as _RustChunker,
+    Chunker,
     chunk_offsets,
     DEFAULT_TARGET_SIZE,
     DEFAULT_DELIMITERS,
 )
 
-__all__ = ["chunk", "chunk_offsets", "DEFAULT_TARGET_SIZE", "DEFAULT_DELIMITERS"]
+__all__ = ["chunk", "Chunker", "chunk_offsets", "DEFAULT_TARGET_SIZE", "DEFAULT_DELIMITERS"]
 __version__ = "0.1.0"
 
 
