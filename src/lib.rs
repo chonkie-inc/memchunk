@@ -185,11 +185,7 @@ impl<'a> Iterator for Chunker<'a> {
                 if self.prefix_mode {
                     // In prefix mode, delimiter goes to next chunk (split before it)
                     // If delimiter is at pos 0, this would create empty chunk - use hard split instead
-                    if pos == 0 {
-                        end
-                    } else {
-                        self.pos + pos
-                    }
+                    if pos == 0 { end } else { self.pos + pos }
                 } else {
                     self.pos + pos + 1 // Delimiter stays with current chunk
                 }
@@ -304,11 +300,7 @@ impl OwnedChunker {
                 if self.prefix_mode {
                     // In prefix mode, delimiter goes to next chunk (split before it)
                     // If delimiter is at pos 0, this would create empty chunk - use hard split instead
-                    if pos == 0 {
-                        end
-                    } else {
-                        self.pos + pos
-                    }
+                    if pos == 0 { end } else { self.pos + pos }
                 } else {
                     self.pos + pos + 1 // Delimiter stays with current chunk
                 }
@@ -356,11 +348,7 @@ impl OwnedChunker {
                     if self.prefix_mode {
                         // In prefix mode, delimiter goes to next chunk (split before it)
                         // If delimiter is at pos 0, this would create empty chunk - use hard split instead
-                        if p == 0 {
-                            end
-                        } else {
-                            pos + p
-                        }
+                        if p == 0 { end } else { pos + p }
                     } else {
                         pos + p + 1 // Delimiter stays with current chunk
                     }
