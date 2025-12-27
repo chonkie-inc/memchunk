@@ -18,10 +18,16 @@ fn extract_bytes(obj: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
 
 /// Chunker splits text at delimiter boundaries.
 ///
-/// Example:
+/// Example with single-byte delimiters:
 ///     >>> from memchunk import Chunker
 ///     >>> text = b"Hello. World. Test."
 ///     >>> for chunk in Chunker(text, size=10, delimiters=b"."):
+///     ...     print(chunk)
+///
+/// Example with multi-byte pattern (e.g., metaspace for SentencePiece):
+///     >>> text = "Hello▁World▁Test"
+///     >>> metaspace = "▁"
+///     >>> for chunk in Chunker(text, size=15, pattern=metaspace, prefix=True):
 ///     ...     print(chunk)
 ///
 /// Also accepts str (encoded as UTF-8):
@@ -36,18 +42,34 @@ pub struct Chunker {
 #[pymethods]
 impl Chunker {
     #[new]
-    #[pyo3(signature = (text, size=DEFAULT_TARGET_SIZE, delimiters=None))]
+    #[pyo3(signature = (text, size=DEFAULT_TARGET_SIZE, delimiters=None, pattern=None, prefix=false))]
     fn new(
         text: &Bound<'_, PyAny>,
         size: usize,
         delimiters: Option<&Bound<'_, PyAny>>,
+        pattern: Option<&Bound<'_, PyAny>>,
+        prefix: bool,
     ) -> PyResult<Self> {
         let text_bytes = extract_bytes(text)?;
-        let delims = match delimiters {
-            Some(d) => extract_bytes(d)?,
-            None => DEFAULT_DELIMITERS.to_vec(),
-        };
-        let inner = OwnedChunker::new(text_bytes).size(size).delimiters(delims);
+
+        let mut inner = OwnedChunker::new(text_bytes).size(size);
+
+        // Pattern takes precedence over delimiters if both specified
+        if let Some(p) = pattern {
+            let pattern_bytes = extract_bytes(p)?;
+            inner = inner.pattern(pattern_bytes);
+        } else {
+            let delims = match delimiters {
+                Some(d) => extract_bytes(d)?,
+                None => DEFAULT_DELIMITERS.to_vec(),
+            };
+            inner = inner.delimiters(delims);
+        }
+
+        if prefix {
+            inner = inner.prefix();
+        }
+
         Ok(Self { inner })
     }
 
@@ -76,23 +98,44 @@ impl Chunker {
 /// Fast chunking function that returns offsets in a single call.
 /// Use this with slicing for maximum performance.
 ///
-/// Example:
+/// Example with single-byte delimiters:
 ///     >>> text = b"Hello. World. Test."
 ///     >>> offsets = chunk_offsets(text, size=10, delimiters=b".")
 ///     >>> chunks = [text[start:end] for start, end in offsets]
+///
+/// Example with multi-byte pattern:
+///     >>> text = "Hello▁World▁Test".encode()
+///     >>> offsets = chunk_offsets(text, size=15, pattern="▁", prefix=True)
+///     >>> chunks = [text[start:end] for start, end in offsets]
 #[pyfunction]
-#[pyo3(signature = (text, size=DEFAULT_TARGET_SIZE, delimiters=None))]
+#[pyo3(signature = (text, size=DEFAULT_TARGET_SIZE, delimiters=None, pattern=None, prefix=false))]
 fn chunk_offsets(
     text: &Bound<'_, PyAny>,
     size: usize,
     delimiters: Option<&Bound<'_, PyAny>>,
+    pattern: Option<&Bound<'_, PyAny>>,
+    prefix: bool,
 ) -> PyResult<Vec<(usize, usize)>> {
     let text_bytes = extract_bytes(text)?;
-    let delims = match delimiters {
-        Some(d) => extract_bytes(d)?,
-        None => DEFAULT_DELIMITERS.to_vec(),
-    };
-    let mut chunker = OwnedChunker::new(text_bytes).size(size).delimiters(delims);
+
+    let mut chunker = OwnedChunker::new(text_bytes).size(size);
+
+    // Pattern takes precedence over delimiters if both specified
+    if let Some(p) = pattern {
+        let pattern_bytes = extract_bytes(p)?;
+        chunker = chunker.pattern(pattern_bytes);
+    } else {
+        let delims = match delimiters {
+            Some(d) => extract_bytes(d)?,
+            None => DEFAULT_DELIMITERS.to_vec(),
+        };
+        chunker = chunker.delimiters(delims);
+    }
+
+    if prefix {
+        chunker = chunker.prefix();
+    }
+
     Ok(chunker.collect_offsets())
 }
 

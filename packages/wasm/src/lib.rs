@@ -3,13 +3,20 @@ use wasm_bindgen::prelude::*;
 
 /// Chunker splits text at delimiter boundaries.
 ///
-/// @example
+/// @example Single-byte delimiters
 /// ```javascript
 /// const chunker = new Chunker(textBytes, 4096, ".\n?");
 /// let chunk;
 /// while ((chunk = chunker.next()) !== undefined) {
 ///     console.log(chunk);
 /// }
+/// ```
+///
+/// @example Multi-byte pattern (e.g., metaspace for SentencePiece)
+/// ```javascript
+/// const encoder = new TextEncoder();
+/// const metaspace = encoder.encode("▁");
+/// const chunker = Chunker.with_pattern(textBytes, 4096, metaspace, true);
 /// ```
 #[wasm_bindgen]
 pub struct Chunker {
@@ -18,20 +25,51 @@ pub struct Chunker {
 
 #[wasm_bindgen]
 impl Chunker {
-    /// Create a new Chunker.
+    /// Create a new Chunker with single-byte delimiters.
     ///
-    /// @param text - The text to chunk (as Uint8Array or string)
+    /// @param text - The text to chunk (as Uint8Array)
     /// @param size - Target chunk size in bytes (default: 4096)
-    /// @param delimiters - Delimiter characters (default: "\n.?")
+    /// @param delimiters - Delimiter characters as string (default: "\n.?")
+    /// @param prefix - Put delimiter at start of next chunk (default: false)
     #[wasm_bindgen(constructor)]
-    pub fn new(text: &[u8], size: Option<usize>, delimiters: Option<String>) -> Chunker {
+    pub fn new(
+        text: &[u8],
+        size: Option<usize>,
+        delimiters: Option<String>,
+        prefix: Option<bool>,
+    ) -> Chunker {
         let target_size = size.unwrap_or(DEFAULT_TARGET_SIZE);
         let delims = delimiters
             .map(|s| s.into_bytes())
             .unwrap_or_else(|| DEFAULT_DELIMITERS.to_vec());
-        let inner = OwnedChunker::new(text.to_vec())
+        let mut inner = OwnedChunker::new(text.to_vec())
             .size(target_size)
             .delimiters(delims);
+        if prefix.unwrap_or(false) {
+            inner = inner.prefix();
+        }
+        Chunker { inner }
+    }
+
+    /// Create a new Chunker with a multi-byte pattern.
+    ///
+    /// @param text - The text to chunk (as Uint8Array)
+    /// @param size - Target chunk size in bytes
+    /// @param pattern - Multi-byte pattern to split on (as Uint8Array)
+    /// @param prefix - Put pattern at start of next chunk (default: false)
+    #[wasm_bindgen]
+    pub fn with_pattern(
+        text: &[u8],
+        size: usize,
+        pattern: &[u8],
+        prefix: Option<bool>,
+    ) -> Chunker {
+        let mut inner = OwnedChunker::new(text.to_vec())
+            .size(size)
+            .pattern(pattern.to_vec());
+        if prefix.unwrap_or(false) {
+            inner = inner.prefix();
+        }
         Chunker { inner }
     }
 
@@ -75,7 +113,7 @@ pub fn default_delimiters() -> Vec<u8> {
 /// Returns a flat array [start1, end1, start2, end2, ...].
 /// Use this with subarray for maximum performance.
 ///
-/// @example
+/// @example Single-byte delimiters
 /// ```javascript
 /// const offsets = chunk_offsets(textBytes, 4096, ".\n?");
 /// const chunks = [];
@@ -84,7 +122,12 @@ pub fn default_delimiters() -> Vec<u8> {
 /// }
 /// ```
 #[wasm_bindgen]
-pub fn chunk_offsets(text: &[u8], size: Option<usize>, delimiters: Option<String>) -> Vec<usize> {
+pub fn chunk_offsets(
+    text: &[u8],
+    size: Option<usize>,
+    delimiters: Option<String>,
+    prefix: Option<bool>,
+) -> Vec<usize> {
     let target_size = size.unwrap_or(DEFAULT_TARGET_SIZE);
     let delims = delimiters
         .map(|s| s.into_bytes())
@@ -92,6 +135,38 @@ pub fn chunk_offsets(text: &[u8], size: Option<usize>, delimiters: Option<String
     let mut chunker = OwnedChunker::new(text.to_vec())
         .size(target_size)
         .delimiters(delims);
+    if prefix.unwrap_or(false) {
+        chunker = chunker.prefix();
+    }
+    chunker
+        .collect_offsets()
+        .into_iter()
+        .flat_map(|(start, end)| [start, end])
+        .collect()
+}
+
+/// Fast chunking function with multi-byte pattern support.
+/// Returns a flat array [start1, end1, start2, end2, ...].
+///
+/// @example Multi-byte pattern (metaspace)
+/// ```javascript
+/// const encoder = new TextEncoder();
+/// const metaspace = encoder.encode("▁");
+/// const offsets = chunk_offsets_pattern(textBytes, 4096, metaspace, true);
+/// ```
+#[wasm_bindgen]
+pub fn chunk_offsets_pattern(
+    text: &[u8],
+    size: usize,
+    pattern: &[u8],
+    prefix: Option<bool>,
+) -> Vec<usize> {
+    let mut chunker = OwnedChunker::new(text.to_vec())
+        .size(size)
+        .pattern(pattern.to_vec());
+    if prefix.unwrap_or(false) {
+        chunker = chunker.prefix();
+    }
     chunker
         .collect_offsets()
         .into_iter()
