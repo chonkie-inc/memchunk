@@ -40,33 +40,43 @@ import { init, chunk } from 'memchunk';
 // initialize wasm (required once)
 await init();
 
-const text = new TextEncoder().encode("Hello world. How are you? I'm fine.\nThanks for asking.");
+const text = "Hello world. How are you? I'm fine.\nThanks for asking.";
 
 // with defaults (4KB chunks, split at \n . ?)
 for (const slice of chunk(text)) {
-    console.log(new TextDecoder().decode(slice));
+    console.log(slice);
 }
 
 // with custom size
 for (const slice of chunk(text, { size: 1024 })) {
-    console.log(new TextDecoder().decode(slice));
+    console.log(slice);
 }
 
 // with custom delimiters
 for (const slice of chunk(text, { delimiters: ".?!\n" })) {
-    console.log(new TextDecoder().decode(slice));
+    console.log(slice);
 }
 
-// with both
-for (const slice of chunk(text, { size: 8192, delimiters: "\n" })) {
-    console.log(new TextDecoder().decode(slice));
+// with multi-byte pattern (e.g., metaspace ▁ for SentencePiece tokenizers)
+for (const slice of chunk(text, { pattern: "▁", prefix: true })) {
+    console.log(slice);
+}
+
+// with consecutive pattern handling (split at START of runs, not middle)
+for (const slice of chunk("word   next", { pattern: " ", consecutive: true })) {
+    console.log(slice);
+}
+
+// with forward fallback (search forward if no pattern in backward window)
+for (const slice of chunk(text, { pattern: " ", forwardFallback: true })) {
+    console.log(slice);
 }
 
 // collect all chunks
 const chunks = [...chunk(text)];
 ```
 
-chunks are returned as `Uint8Array` subarrays (zero-copy views of the original text).
+pass strings and get strings back. for zero-copy performance with binary data, pass `Uint8Array` and you'll get `Uint8Array` views back.
 
 ## 📝 citation
 

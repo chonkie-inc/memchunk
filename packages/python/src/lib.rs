@@ -30,6 +30,11 @@ fn extract_bytes(obj: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
 ///     >>> for chunk in Chunker(text, size=15, pattern=metaspace, prefix=True):
 ///     ...     print(chunk)
 ///
+/// Example with consecutive pattern handling:
+///     >>> text = "word   next"  # Three spaces
+///     >>> for chunk in Chunker(text, pattern=" ", consecutive=True):
+///     ...     print(chunk)  # Splits at START of "   ", not middle
+///
 /// Also accepts str (encoded as UTF-8):
 ///     >>> text = "Hello. World. Test."
 ///     >>> for chunk in Chunker(text, size=10, delimiters="."):
@@ -42,13 +47,15 @@ pub struct Chunker {
 #[pymethods]
 impl Chunker {
     #[new]
-    #[pyo3(signature = (text, size=DEFAULT_TARGET_SIZE, delimiters=None, pattern=None, prefix=false))]
+    #[pyo3(signature = (text, size=DEFAULT_TARGET_SIZE, delimiters=None, pattern=None, prefix=false, consecutive=false, forward_fallback=false))]
     fn new(
         text: &Bound<'_, PyAny>,
         size: usize,
         delimiters: Option<&Bound<'_, PyAny>>,
         pattern: Option<&Bound<'_, PyAny>>,
         prefix: bool,
+        consecutive: bool,
+        forward_fallback: bool,
     ) -> PyResult<Self> {
         let text_bytes = extract_bytes(text)?;
 
@@ -68,6 +75,12 @@ impl Chunker {
 
         if prefix {
             inner = inner.prefix();
+        }
+        if consecutive {
+            inner = inner.consecutive();
+        }
+        if forward_fallback {
+            inner = inner.forward_fallback();
         }
 
         Ok(Self { inner })
@@ -108,13 +121,15 @@ impl Chunker {
 ///     >>> offsets = chunk_offsets(text, size=15, pattern="▁", prefix=True)
 ///     >>> chunks = [text[start:end] for start, end in offsets]
 #[pyfunction]
-#[pyo3(signature = (text, size=DEFAULT_TARGET_SIZE, delimiters=None, pattern=None, prefix=false))]
+#[pyo3(signature = (text, size=DEFAULT_TARGET_SIZE, delimiters=None, pattern=None, prefix=false, consecutive=false, forward_fallback=false))]
 fn chunk_offsets(
     text: &Bound<'_, PyAny>,
     size: usize,
     delimiters: Option<&Bound<'_, PyAny>>,
     pattern: Option<&Bound<'_, PyAny>>,
     prefix: bool,
+    consecutive: bool,
+    forward_fallback: bool,
 ) -> PyResult<Vec<(usize, usize)>> {
     let text_bytes = extract_bytes(text)?;
 
@@ -134,6 +149,12 @@ fn chunk_offsets(
 
     if prefix {
         chunker = chunker.prefix();
+    }
+    if consecutive {
+        chunker = chunker.consecutive();
+    }
+    if forward_fallback {
+        chunker = chunker.forward_fallback();
     }
 
     Ok(chunker.collect_offsets())

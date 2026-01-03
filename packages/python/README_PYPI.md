@@ -35,28 +35,36 @@ looking for [rust](https://github.com/chonkie-inc/memchunk) or [javascript](http
 ## 🚀 usage
 
 ```python
-from memchunk import chunk
+from memchunk import Chunker
 
 text = "Hello world. How are you? I'm fine.\nThanks for asking."
 
 # with defaults (4KB chunks, split at \n . ?)
-for slice in chunk(text):
-    print(bytes(slice))
+for chunk in Chunker(text):
+    print(bytes(chunk))
 
 # with custom size
-for slice in chunk(text, size=1024):
-    print(bytes(slice))
+for chunk in Chunker(text, size=1024):
+    print(bytes(chunk))
 
 # with custom delimiters
-for slice in chunk(text, delimiters=".?!\n"):
-    print(bytes(slice))
+for chunk in Chunker(text, delimiters=".?!\n"):
+    print(bytes(chunk))
 
-# with both
-for slice in chunk(text, size=8192, delimiters="\n"):
-    print(bytes(slice))
+# with multi-byte pattern (e.g., metaspace ▁ for SentencePiece tokenizers)
+for chunk in Chunker(text, pattern="▁", prefix=True):
+    print(bytes(chunk))
+
+# with consecutive pattern handling (split at START of runs, not middle)
+for chunk in Chunker("word   next", pattern=" ", consecutive=True):
+    print(bytes(chunk))
+
+# with forward fallback (search forward if no pattern in backward window)
+for chunk in Chunker(text, pattern=" ", forward_fallback=True):
+    print(bytes(chunk))
 
 # collect all chunks
-chunks = list(chunk(text))
+chunks = list(Chunker(text))
 ```
 
 chunks are returned as `memoryview` objects (zero-copy slices of the original text).

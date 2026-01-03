@@ -7,9 +7,15 @@
  *
  * await init();
  *
- * const text = new TextEncoder().encode("Hello. World. Test.");
- * for (const slice of chunk(text, { size: 10, delimiters: "." })) {
- *     console.log(new TextDecoder().decode(slice));
+ * // Simple string API - strings in, strings out
+ * for (const slice of chunk("Hello. World. Test.", { size: 10 })) {
+ *     console.log(slice);
+ * }
+ *
+ * // Or use bytes for zero-copy performance
+ * const bytes = new TextEncoder().encode("Hello. World.");
+ * for (const slice of chunk(bytes, { size: 10 })) {
+ *     console.log(slice); // Uint8Array
  * }
  * ```
  */
@@ -19,31 +25,65 @@ import initWasm, {
     default_target_size,
     default_delimiters,
     chunk_offsets as wasmChunkOffsets,
+    chunk_offsets_pattern as wasmChunkOffsetsPattern,
 } from './pkg/memchunk_wasm.js';
 
 export { default_target_size, default_delimiters };
 
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+/**
+ * Convert input to bytes if it's a string.
+ * @param {string | Uint8Array} input
+ * @returns {Uint8Array}
+ */
+function toBytes(input) {
+    return typeof input === 'string' ? encoder.encode(input) : input;
+}
+
 /**
  * Split text into chunks at delimiter boundaries.
- * Returns an iterator of zero-copy Uint8Array subarray views.
+ * Accepts strings or Uint8Array. Returns the same type as input.
  *
- * @param {Uint8Array} text - The text to chunk as bytes
+ * @param {string | Uint8Array} text - The text to chunk
  * @param {Object} [options] - Options
  * @param {number} [options.size=4096] - Target chunk size in bytes
  * @param {string} [options.delimiters="\n.?"] - Delimiter characters
- * @yields {Uint8Array} Zero-copy subarray views of the original text
+ * @param {string | Uint8Array} [options.pattern] - Multi-byte pattern to split on
+ * @param {boolean} [options.prefix=false] - Put delimiter/pattern at start of next chunk
+ * @param {boolean} [options.consecutive=false] - Split at START of consecutive runs
+ * @param {boolean} [options.forwardFallback=false] - Search forward if no pattern in backward window
+ * @yields {string | Uint8Array} Chunks (same type as input)
  *
  * @example
- * const text = new TextEncoder().encode("Hello. World. Test.");
- * for (const slice of chunk(text, { size: 10, delimiters: "." })) {
- *     console.log(new TextDecoder().decode(slice));
+ * // String input returns strings
+ * for (const slice of chunk("Hello. World.", { size: 10 })) {
+ *     console.log(slice);
+ * }
+ *
+ * @example
+ * // With pattern (e.g., metaspace for SentencePiece)
+ * for (const slice of chunk("Hello▁World▁Test", { pattern: "▁", prefix: true })) {
+ *     console.log(slice);
  * }
  */
 export function* chunk(text, options = {}) {
-    const { size, delimiters } = options;
-    const flat = wasmChunkOffsets(text, size, delimiters);
+    const isString = typeof text === 'string';
+    const bytes = toBytes(text);
+    const { size, delimiters, pattern, prefix, consecutive, forwardFallback } = options;
+
+    let flat;
+    if (pattern) {
+        const patternBytes = toBytes(pattern);
+        flat = wasmChunkOffsetsPattern(bytes, size ?? 4096, patternBytes, prefix, consecutive, forwardFallback);
+    } else {
+        flat = wasmChunkOffsets(bytes, size, delimiters, prefix);
+    }
+
     for (let i = 0; i < flat.length; i += 2) {
-        yield text.subarray(flat[i], flat[i + 1]);
+        const slice = bytes.subarray(flat[i], flat[i + 1]);
+        yield isString ? decoder.decode(slice) : slice;
     }
 }
 
@@ -51,15 +91,28 @@ export function* chunk(text, options = {}) {
  * Get chunk offsets without creating views.
  * Returns an array of [start, end] offset pairs.
  *
- * @param {Uint8Array} text - The text to chunk as bytes
+ * @param {string | Uint8Array} text - The text to chunk
  * @param {Object} [options] - Options
  * @param {number} [options.size=4096] - Target chunk size in bytes
  * @param {string} [options.delimiters="\n.?"] - Delimiter characters
- * @returns {Array<[number, number]>} Array of [start, end] offset pairs
+ * @param {string | Uint8Array} [options.pattern] - Multi-byte pattern to split on
+ * @param {boolean} [options.prefix=false] - Put delimiter/pattern at start of next chunk
+ * @param {boolean} [options.consecutive=false] - Split at START of consecutive runs
+ * @param {boolean} [options.forwardFallback=false] - Search forward if no pattern in backward window
+ * @returns {Array<[number, number]>} Array of [start, end] byte offset pairs
  */
 export function chunk_offsets(text, options = {}) {
-    const { size, delimiters } = options;
-    const flat = wasmChunkOffsets(text, size, delimiters);
+    const bytes = toBytes(text);
+    const { size, delimiters, pattern, prefix, consecutive, forwardFallback } = options;
+
+    let flat;
+    if (pattern) {
+        const patternBytes = toBytes(pattern);
+        flat = wasmChunkOffsetsPattern(bytes, size ?? 4096, patternBytes, prefix, consecutive, forwardFallback);
+    } else {
+        flat = wasmChunkOffsets(bytes, size, delimiters, prefix);
+    }
+
     const pairs = [];
     for (let i = 0; i < flat.length; i += 2) {
         pairs.push([flat[i], flat[i + 1]]);
@@ -82,26 +135,54 @@ export async function init() {
 /**
  * Chunker splits text at delimiter boundaries.
  * Implements Symbol.iterator for use in for...of loops.
+ *
+ * @example
+ * // String input
+ * const chunker = new Chunker("Hello. World. Test.", { size: 10 });
+ * for (const slice of chunker) {
+ *     console.log(slice); // strings
+ * }
+ *
+ * @example
+ * // With pattern
+ * const chunker = new Chunker("Hello▁World", { pattern: "▁", prefix: true });
+ * for (const slice of chunker) {
+ *     console.log(slice);
+ * }
  */
 export class Chunker {
     /**
      * Create a new Chunker.
-     * @param {Uint8Array} text - The text to chunk as bytes
+     * @param {string | Uint8Array} text - The text to chunk
      * @param {Object} [options] - Options
      * @param {number} [options.size=4096] - Target chunk size in bytes
      * @param {string} [options.delimiters="\n.?"] - Delimiter characters
+     * @param {string | Uint8Array} [options.pattern] - Multi-byte pattern to split on
+     * @param {boolean} [options.prefix=false] - Put delimiter/pattern at start of next chunk
+     * @param {boolean} [options.consecutive=false] - Split at START of consecutive runs
+     * @param {boolean} [options.forwardFallback=false] - Search forward if no pattern in backward window
      */
     constructor(text, options = {}) {
-        const { size, delimiters } = options;
-        this._chunker = new WasmChunker(text, size, delimiters);
+        this._isString = typeof text === 'string';
+        const bytes = toBytes(text);
+        const { size, delimiters, pattern, prefix, consecutive, forwardFallback } = options;
+
+        if (pattern) {
+            const patternBytes = toBytes(pattern);
+            this._chunker = WasmChunker.with_pattern(bytes, size ?? 4096, patternBytes, prefix, consecutive, forwardFallback);
+        } else {
+            this._chunker = new WasmChunker(bytes, size, delimiters, prefix);
+        }
     }
 
     /**
      * Get the next chunk, or undefined if exhausted.
-     * @returns {Uint8Array | undefined}
+     * @returns {string | Uint8Array | undefined}
      */
     next() {
-        return this._chunker.next();
+        const chunk = this._chunker.next();
+        if (chunk === undefined) return undefined;
+        return this._isString ? decoder.decode(chunk) : chunk;
     }
 
     /**
@@ -138,7 +219,7 @@ export class Chunker {
     *[Symbol.iterator]() {
         let chunk;
         while ((chunk = this._chunker.next()) !== undefined) {
-            yield chunk;
+            yield this._isString ? decoder.decode(chunk) : chunk;
         }
     }
 }

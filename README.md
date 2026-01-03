@@ -56,8 +56,21 @@ let chunks: Vec<&[u8]> = chunk(text).size(1024).collect();
 // With custom delimiters
 let chunks: Vec<&[u8]> = chunk(text).delimiters(b"\n.?!").collect();
 
-// With both
-let chunks: Vec<&[u8]> = chunk(text).size(8192).delimiters(b"\n").collect();
+// With multi-byte pattern (e.g., metaspace ▁ for SentencePiece tokenizers)
+let metaspace = "▁".as_bytes();
+let chunks: Vec<&[u8]> = chunk(text).pattern(metaspace).prefix().collect();
+
+// With consecutive pattern handling (split at START of runs, not middle)
+let chunks: Vec<&[u8]> = chunk(b"word   next")
+    .pattern(b" ")
+    .consecutive()
+    .collect();
+
+// With forward fallback (search forward if no pattern in backward window)
+let chunks: Vec<&[u8]> = chunk(text)
+    .pattern(b" ")
+    .forward_fallback()
+    .collect();
 ```
 
 ## 📝 Citation

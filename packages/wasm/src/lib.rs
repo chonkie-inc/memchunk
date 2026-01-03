@@ -57,13 +57,28 @@ impl Chunker {
     /// @param size - Target chunk size in bytes
     /// @param pattern - Multi-byte pattern to split on (as Uint8Array)
     /// @param prefix - Put pattern at start of next chunk (default: false)
+    /// @param consecutive - Split at START of consecutive runs (default: false)
+    /// @param forward_fallback - Search forward if no pattern in backward window (default: false)
     #[wasm_bindgen]
-    pub fn with_pattern(text: &[u8], size: usize, pattern: &[u8], prefix: Option<bool>) -> Chunker {
+    pub fn with_pattern(
+        text: &[u8],
+        size: usize,
+        pattern: &[u8],
+        prefix: Option<bool>,
+        consecutive: Option<bool>,
+        forward_fallback: Option<bool>,
+    ) -> Chunker {
         let mut inner = OwnedChunker::new(text.to_vec())
             .size(size)
             .pattern(pattern.to_vec());
         if prefix.unwrap_or(false) {
             inner = inner.prefix();
+        }
+        if consecutive.unwrap_or(false) {
+            inner = inner.consecutive();
+        }
+        if forward_fallback.unwrap_or(false) {
+            inner = inner.forward_fallback();
         }
         Chunker { inner }
     }
@@ -147,7 +162,7 @@ pub fn chunk_offsets(
 /// ```javascript
 /// const encoder = new TextEncoder();
 /// const metaspace = encoder.encode("▁");
-/// const offsets = chunk_offsets_pattern(textBytes, 4096, metaspace, true);
+/// const offsets = chunk_offsets_pattern(textBytes, 4096, metaspace, true, true, true);
 /// ```
 #[wasm_bindgen]
 pub fn chunk_offsets_pattern(
@@ -155,12 +170,20 @@ pub fn chunk_offsets_pattern(
     size: usize,
     pattern: &[u8],
     prefix: Option<bool>,
+    consecutive: Option<bool>,
+    forward_fallback: Option<bool>,
 ) -> Vec<usize> {
     let mut chunker = OwnedChunker::new(text.to_vec())
         .size(size)
         .pattern(pattern.to_vec());
     if prefix.unwrap_or(false) {
         chunker = chunker.prefix();
+    }
+    if consecutive.unwrap_or(false) {
+        chunker = chunker.consecutive();
+    }
+    if forward_fallback.unwrap_or(false) {
+        chunker = chunker.forward_fallback();
     }
     chunker
         .collect_offsets()
