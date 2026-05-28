@@ -1,14 +1,12 @@
 use chunk::{
     DEFAULT_DELIMITERS, DEFAULT_TARGET_SIZE, IncludeDelim, OwnedChunker,
-    PatternSplitter as RustPatternSplitter,
-    find_merge_indices as rust_find_merge_indices, merge_splits as rust_merge_splits,
-    split_at_delimiters, split_at_patterns,
+    PatternSplitter as RustPatternSplitter, find_merge_indices as rust_find_merge_indices,
+    merge_splits as rust_merge_splits, split_at_delimiters, split_at_patterns,
 };
 #[cfg(feature = "numpy-support")]
 use chunk::{
     filter_split_indices as rust_filter_split_indices,
-    find_local_minima_interpolated as rust_find_local_minima,
-    savgol_filter as rust_savgol_filter,
+    find_local_minima_interpolated as rust_find_local_minima, savgol_filter as rust_savgol_filter,
     windowed_cross_similarity as rust_windowed_cross_similarity,
 };
 #[cfg(feature = "numpy-support")]
