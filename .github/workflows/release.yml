@@ -46,7 +46,7 @@ jobs:
       - uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist -m packages/python/Cargo.toml --interpreter 3.9 3.10 3.11 3.12 3.13
+          args: --release --out dist -m packages/python/Cargo.toml --interpreter 3.10 3.11 3.12 3.13 3.14
           manylinux: ${{ matrix.manylinux }}
 
       - uses: actions/upload-artifact@v4
@@ -160,6 +160,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Publish to npm
+        continue-on-error: true
         run: |
           cd packages/wasm
           npm publish --access public --provenance
