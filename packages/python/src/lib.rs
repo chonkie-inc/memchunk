@@ -1,11 +1,17 @@
 use chunk::{
     DEFAULT_DELIMITERS, DEFAULT_TARGET_SIZE, IncludeDelim, OwnedChunker,
-    PatternSplitter as RustPatternSplitter, filter_split_indices as rust_filter_split_indices,
-    find_local_minima_interpolated as rust_find_local_minima,
+    PatternSplitter as RustPatternSplitter,
     find_merge_indices as rust_find_merge_indices, merge_splits as rust_merge_splits,
-    savgol_filter as rust_savgol_filter, split_at_delimiters, split_at_patterns,
+    split_at_delimiters, split_at_patterns,
+};
+#[cfg(feature = "numpy-support")]
+use chunk::{
+    filter_split_indices as rust_filter_split_indices,
+    find_local_minima_interpolated as rust_find_local_minima,
+    savgol_filter as rust_savgol_filter,
     windowed_cross_similarity as rust_windowed_cross_similarity,
 };
+#[cfg(feature = "numpy-support")]
 use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2, PyUntypedArrayMethods};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyString};
@@ -485,6 +491,7 @@ fn merge_splits(splits: Vec<String>, token_counts: Vec<usize>, chunk_size: usize
 // Savitzky-Golay Filter Functions (NumPy-optimized)
 // =============================================================================
 
+#[cfg(feature = "numpy-support")]
 /// Apply Savitzky-Golay filter to data.
 ///
 /// This filter is used for smoothing signals and computing derivatives.
@@ -523,6 +530,7 @@ fn savgol_filter<'py>(
     Ok(PyArray1::from_vec(py, result))
 }
 
+#[cfg(feature = "numpy-support")]
 /// Find local minima with sub-sample accuracy using Savitzky-Golay derivatives.
 ///
 /// A point is considered a minimum if its first derivative is near zero
@@ -565,6 +573,7 @@ fn find_local_minima_interpolated<'py>(
     ))
 }
 
+#[cfg(feature = "numpy-support")]
 /// Compute windowed cross-similarity for semantic chunking.
 ///
 /// For each position, computes the average cosine similarity between
@@ -608,6 +617,7 @@ fn windowed_cross_similarity<'py>(
     Ok(PyArray1::from_vec(py, result))
 }
 
+#[cfg(feature = "numpy-support")]
 /// Filter split indices by percentile threshold and minimum distance.
 ///
 /// This is used in semantic chunking to select optimal split points
@@ -664,11 +674,13 @@ fn _chunk(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(split_pattern_offsets, m)?)?;
     m.add_function(wrap_pyfunction!(find_merge_indices, m)?)?;
     m.add_function(wrap_pyfunction!(merge_splits, m)?)?;
-    // Savitzky-Golay functions
-    m.add_function(wrap_pyfunction!(savgol_filter, m)?)?;
-    m.add_function(wrap_pyfunction!(find_local_minima_interpolated, m)?)?;
-    m.add_function(wrap_pyfunction!(windowed_cross_similarity, m)?)?;
-    m.add_function(wrap_pyfunction!(filter_split_indices, m)?)?;
+    #[cfg(feature = "numpy-support")]
+    {
+        m.add_function(wrap_pyfunction!(savgol_filter, m)?)?;
+        m.add_function(wrap_pyfunction!(find_local_minima_interpolated, m)?)?;
+        m.add_function(wrap_pyfunction!(windowed_cross_similarity, m)?)?;
+        m.add_function(wrap_pyfunction!(filter_split_indices, m)?)?;
+    }
     m.add("DEFAULT_TARGET_SIZE", DEFAULT_TARGET_SIZE)?;
     m.add("DEFAULT_DELIMITERS", DEFAULT_DELIMITERS)?;
     Ok(())

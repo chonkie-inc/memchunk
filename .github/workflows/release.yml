@@ -4,90 +4,132 @@ on:
   release:
     types: [published]
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   publish-crate:
     name: Publish to crates.io
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - name: Publish to crates.io
+        continue-on-error: true
         run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-  publish-python:
-    name: Publish to PyPI
+  build-wheels:
+    name: Build wheels (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
-            target: x86_64
+            target: x86_64-unknown-linux-gnu
+            manylinux: auto
           - os: ubuntu-latest
-            target: aarch64
+            target: aarch64-unknown-linux-gnu
+            manylinux: 2_28
           - os: macos-latest
-            target: x86_64
+            target: x86_64-apple-darwin
+            manylinux: auto
           - os: macos-latest
-            target: aarch64
+            target: aarch64-apple-darwin
+            manylinux: auto
           - os: windows-latest
-            target: x86_64
+            target: x86_64-pc-windows-msvc
+            manylinux: auto
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
+      - uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist -m packages/python/Cargo.toml --find-interpreter
-          manylinux: auto
+          args: --release --out dist -m packages/python/Cargo.toml --interpreter 3.9 3.10 3.11 3.12 3.13
+          manylinux: ${{ matrix.manylinux }}
 
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}-${{ matrix.target }}
+          name: wheels-${{ matrix.target }}
           path: dist
 
-  publish-python-sdist:
-    name: Build Python sdist
+  build-pyemscripten:
+    name: Build PyEmscripten wheel (Pyodide ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: '3.14'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install pyodide-build
+        run: pip install pyodide-build
+
+      - name: Get pyodide config
+        id: pyodide_config
+        run: |
+          echo "rust_toolchain=$(pyodide config get rust_toolchain)" >> "$GITHUB_OUTPUT"
+          echo "emscripten_version=$(pyodide config get emscripten_version)" >> "$GITHUB_OUTPUT"
+          echo "pyodide_abi_version=$(pyodide config get pyodide_abi_version)" >> "$GITHUB_OUTPUT"
+          echo "rustflags=$(pyodide config get rustflags)" >> "$GITHUB_OUTPUT"
+
+      - uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: ${{ steps.pyodide_config.outputs.emscripten_version }}
+
+      - name: Build PyEmscripten wheel
+        uses: PyO3/maturin-action@v1
+        env:
+          CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_RUSTFLAGS: ${{ steps.pyodide_config.outputs.rustflags }}
+          MATURIN_PYEMSCRIPTEN_PLATFORM_VERSION: ${{ steps.pyodide_config.outputs.pyodide_abi_version }}
+        with:
+          target: wasm32-unknown-emscripten
+          args: --release --out dist -m packages/python/Cargo.toml --interpreter ${{ matrix.python-version }} --no-default-features
+          rust-toolchain: ${{ steps.pyodide_config.outputs.rust_toolchain }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-pyemscripten-${{ matrix.python-version }}
+          path: dist
+
+  build-sdist:
+    name: Build source distribution
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build sdist
-        uses: PyO3/maturin-action@v1
+      - uses: PyO3/maturin-action@v1
         with:
           command: sdist
           args: --out dist -m packages/python/Cargo.toml
 
-      - name: Upload sdist
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: wheels-sdist
           path: dist
 
   upload-pypi:
     name: Upload to PyPI
-    needs: [publish-python, publish-python-sdist]
+    needs: [build-wheels, build-pyemscripten, build-sdist]
     runs-on: ubuntu-latest
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           pattern: wheels-*
-          path: dist
           merge-multiple: true
+          path: dist
 
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_TOKEN }}
+          packages-dir: dist/
 
   publish-npm:
     name: Publish to npm
@@ -109,7 +151,6 @@ jobs:
         run: |
           cd packages/wasm
           wasm-pack build --target web
-          # Remove .gitignore from pkg/ so npm includes WASM files
           rm -f pkg/.gitignore
 
       - name: Setup Node.js
