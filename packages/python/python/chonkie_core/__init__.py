@@ -9,11 +9,6 @@ from chonkie_core._chunk import (
     merge_splits,
     split_offsets,
     split_pattern_offsets,
-    # Savitzky-Golay filter functions
-    savgol_filter,
-    find_local_minima_interpolated,
-    windowed_cross_similarity,
-    filter_split_indices,
     DEFAULT_TARGET_SIZE,
     DEFAULT_DELIMITERS,
 )
@@ -28,14 +23,26 @@ __all__ = [
     "merge_splits",
     "split_offsets",
     "split_pattern_offsets",
-    # Savitzky-Golay filter functions
-    "savgol_filter",
-    "find_local_minima_interpolated",
-    "windowed_cross_similarity",
-    "filter_split_indices",
     "DEFAULT_TARGET_SIZE",
     "DEFAULT_DELIMITERS",
 ]
+
+try:
+    from chonkie_core._chunk import (
+        savgol_filter,
+        find_local_minima_interpolated,
+        windowed_cross_similarity,
+        filter_split_indices,
+    )
+
+    __all__ += [
+        "savgol_filter",
+        "find_local_minima_interpolated",
+        "windowed_cross_similarity",
+        "filter_split_indices",
+    ]
+except ImportError:
+    pass
 __version__ = "0.10.1"
 
 

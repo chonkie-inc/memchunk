@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   test-rust:
     name: Test Rust
@@ -15,6 +18,8 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run tests
         run: cargo test
@@ -42,7 +47,7 @@ jobs:
       - name: Create virtualenv and install dependencies
         run: |
           uv venv
-          uv pip install pytest
+          uv pip install pytest numpy
 
       - name: Build wheel
         uses: PyO3/maturin-action@v1
@@ -58,6 +63,48 @@ jobs:
           source .venv/bin/activate
           cd packages/python
           python -m pytest tests/ -v
+
+  test-python-no-numpy:
+    name: Test Python (no numpy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Create virtualenv and install dependencies
+        run: |
+          uv venv
+          uv pip install pytest
+
+      - name: Build wheel (no default features)
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release -m packages/python/Cargo.toml -o dist --no-default-features
+
+      - name: Install wheel
+        run: uv pip install dist/*.whl
+
+      - name: Run tests
+        run: |
+          source .venv/bin/activate
+          python -c "
+          import chonkie_core
+          # Core functions should work
+          text = b'Hello. World. Test.'
+          chunks = list(chonkie_core.Chunker(text, size=10, delimiters=b'.'))
+          assert len(chunks) == 3
+          # Numpy functions should not be available
+          assert not hasattr(chonkie_core, 'savgol_filter')
+          print('No-numpy build works correctly!')
+          "
 
   test-wasm:
     name: Test WASM

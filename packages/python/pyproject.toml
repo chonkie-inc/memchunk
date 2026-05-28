@@ -7,9 +7,9 @@ name = "chonkie-core"
 version = "0.10.1"
 description = "The fastest semantic text chunking library"
 readme = "README_PYPI.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = { text = "MIT OR Apache-2.0" }
-dependencies = ["numpy>=1.20"]
+dependencies = []
 authors = [{ name = "Bhavnick Minhas" }]
 keywords = ["chunking", "text", "simd", "nlp", "tokenization", "rag", "chonkie"]
 classifiers = [
@@ -20,13 +20,16 @@ classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Text Processing",
 ]
+
+[project.optional-dependencies]
+numpy = ["numpy>=1.20"]
 
 [project.urls]
 Homepage = "https://github.com/chonkie-inc/chunk"
